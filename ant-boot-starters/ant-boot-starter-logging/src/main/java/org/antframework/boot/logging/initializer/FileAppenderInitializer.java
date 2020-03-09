@@ -11,17 +11,19 @@ package org.antframework.boot.logging.initializer;
 import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.encoder.Encoder;
 import ch.qos.logback.core.rolling.RollingPolicy;
+import ch.qos.logback.core.util.FileSize;
 import lombok.Getter;
 import lombok.Setter;
-import org.antframework.boot.core.Apps;
 import org.antframework.boot.core.Contexts;
 import org.antframework.boot.logging.LoggingInitializer;
 import org.antframework.boot.logging.core.LoggingContext;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.annotation.Order;
+import org.springframework.util.unit.DataSize;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.io.File;
 
 /**
@@ -44,15 +46,15 @@ public class FileAppenderInitializer implements LoggingInitializer {
         Encoder encoder = LogUtils.buildEncoder(context, properties.getPattern());
         // 构建滚动策略
         RollingPolicy policy = LogUtils.buildSizeAndTimeBasedRollingPolicy(
-                Apps.getLogPath() + File.separator + properties.getRollingFileName(),
-                properties.getMaxFileSize(),
+                properties.getRollingFilePath(),
+                new FileSize(properties.getMaxFileSize().toBytes()),
                 properties.getMaxHistory(),
                 properties.getTotalSizeCap());
         // 构建appender
         Appender appender = LogUtils.buildRollingFileAppender(context,
                 APPENDER_NAME,
                 encoder,
-                Apps.getLogPath() + File.separator + properties.getFileName(),
+                properties.getFilePath(),
                 policy);
         // 将appender配置到root下
         context.getConfigurator().root(null, appender);
@@ -76,25 +78,25 @@ public class FileAppenderInitializer implements LoggingInitializer {
          */
         private boolean enable = true;
         /**
-         * 选填：日志格式
+         * 选填：日志格式（默认%d{yyyy-MM-dd HH:mm:ss.SSS} %level [%thread] %logger{0}:%L- %msg%n%wEx）
          */
         @NotBlank
         private String pattern = DEFAULT_PATTERN;
         /**
-         * 选填：文件名（默认${appId}.log）
+         * 选填：文件路径（默认${app.home}/logs/${appId}.log）
          */
         @NotBlank
-        private String fileName = Apps.getAppId() + ".log";
+        private String filePath = Contexts.getHome() + File.separator + "logs" + File.separator + Contexts.getAppId() + ".log";
         /**
-         * 选填：滚动文件名（默认${appId}.log.%d{yyyyMMdd}-%i）
+         * 选填：滚动文件路径（默认${app.home}/logs/${appId}.log.%d{yyyyMMdd}-%i）
          */
         @NotBlank
-        private String rollingFileName = Apps.getAppId() + ".log.%d{yyyyMMdd}-%i";
+        private String rollingFilePath = Contexts.getHome() + File.separator + "logs" + File.separator + Contexts.getAppId() + ".log.%d{yyyyMMdd}-%i";
         /**
-         * 选填：单个文件最大容量
+         * 选填：单个文件最大容量（默认1GB）
          */
-        @NotBlank
-        private String maxFileSize = "1GB";
+        @NotNull
+        private DataSize maxFileSize = DataSize.ofGigabytes(1);
         /**
          * 选填：最多保存的文件个数（默认不限制）
          */
